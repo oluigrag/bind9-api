@@ -262,6 +262,23 @@ EOF
 | `statistics-channels` | Enables statistics API endpoint | Optional |
 | `logging { ... }` | Log configuration for troubleshooting | Recommended |
 
+### Dynamic Updates
+
+Zones created by the API are configured for dynamic DNS updates by default using the `ddns-key` TSIG key.
+
+**Zone Configuration Default:**
+```bind
+allow-update { key "ddns-key"; };
+```
+
+This allows the API to add, modify, and delete DNS records via `nsupdate`.
+
+**To disable dynamic updates:**
+Set `allow_update: []` in the zone options when creating a zone.
+
+**To use a different key:**
+Set the environment variable `BIND9_API_TSIG_KEY_NAME` to your key name.
+
 ### 5. Configure AppArmor (Ubuntu - Critical!)
 
 **AppArmor restricts BIND9's file access by default.** This step is essential on Ubuntu.

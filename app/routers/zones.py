@@ -222,15 +222,11 @@ async def create_zone(
         if zone.zone_type in [ZoneType.SLAVE, ZoneType.SECONDARY]:
             masters = [f"{s.address}" for s in zone.options.masters]
         
-        # Get allow-update settings
-        allow_update = None
-        if zone.options and zone.options.allow_update:
-            allow_update = zone.options.allow_update
+        # Get allow-update settings (default set by ZoneOptions validator)
+        allow_update = zone.options.allow_update
         
         # Get allow-transfer settings
-        allow_transfer = None
-        if zone.options and zone.options.allow_transfer:
-            allow_transfer = zone.options.allow_transfer
+        allow_transfer = zone.options.allow_transfer
         
         result = await rndc_service.addzone(
             zone=zone.name,

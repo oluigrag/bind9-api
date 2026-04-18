@@ -4,8 +4,10 @@ Zone Management Models for BIND9 REST API
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
+
+from ..config import settings
 
 
 class ZoneType(str, Enum):
@@ -80,8 +82,17 @@ class ZoneOptions(BaseModel):
     masters: List[ZoneServer] = Field(default=[], description="Master servers (for slave zones)")
     
     # Update options
-    allow_update: List[str] = Field(default=["none"], description="ACL for dynamic updates")
+    allow_update: List[str] = Field(default=None, description="ACL for dynamic updates")
     update_policy: List[UpdatePolicyRule] = Field(default=[], description="Update policy rules")
+    
+    @model_validator(mode="before")
+    @classmethod
+    def set_default_allow_update(cls, values):
+        if isinstance(values, dict):
+            if values.get("allow_update") is None:
+                key_name = settings.tsig_key_name or "ddns-key"
+                values["allow_update"] = [f"key {key_name}"]
+        return values
     
     # Query options
     allow_query: List[str] = Field(default=["any"], description="ACL for queries")

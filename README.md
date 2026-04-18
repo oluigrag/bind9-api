@@ -209,6 +209,18 @@ include "/etc/bind/named.conf.local";
 | `statistics-channels` | Enables statistics API endpoint | Optional |
 | `logging { ... }` | Log configuration for troubleshooting | Recommended |
 
+### Zone Dynamic Updates
+
+By default, zones created via the API are configured for dynamic DNS updates using the TSIG key `ddns-key`:
+
+```bind
+allow-update { key "ddns-key"; };
+```
+
+This allows the API to add, modify, and delete DNS records via `nsupdate`.
+
+To disable dynamic updates for a zone, explicitly set `allow_update: []` in the zone options.
+
 ### Generate Required Keys
 
 ```bash
