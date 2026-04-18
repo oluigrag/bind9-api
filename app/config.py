@@ -34,9 +34,11 @@ class Settings(BaseSettings):
     bind9_nsupdate_path: str = "/usr/bin/nsupdate"
     bind9_named_checkzone: str = "/usr/bin/named-checkzone"
     bind9_named_checkconf: str = "/usr/bin/named-checkconf"
+    bind9_named_nzd2nzf: str = "/usr/bin/named-nzd2nzf"
     bind9_dnssec_keygen: str = "/usr/sbin/dnssec-keygen"
     bind9_dnssec_signzone: str = "/usr/sbin/dnssec-signzone"
     bind9_acl_file: str = "/etc/bind/named.conf.acls"
+    bind9_cache_dir: str = "/var/cache/bind"
     
     # Statistics Channel
     bind9_stats_url: str = "http://127.0.0.1:8053"

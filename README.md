@@ -209,6 +209,22 @@ include "/etc/bind/named.conf.local";
 | `statistics-channels` | Enables statistics API endpoint | Optional |
 | `logging { ... }` | Log configuration for troubleshooting | Recommended |
 
+### Listing Zones
+
+The `GET /zones` endpoint lists **all zones** known to BIND:
+
+- **Static zones**: Configured in `named.conf` or `/etc/bind/zones/*.conf`
+- **Runtime zones**: Created via `rndc addzone` (stored in BIND's NZD database)
+
+Zones created via the API use `rndc addzone` and are stored in BIND's runtime database
+at `/var/cache/bind/_default.nzd`, not in text configuration files.
+
+The API uses the `named-nzd2nzf` utility to query BIND's NZD database and combine it
+with static zone information for accurate zone listing.
+
+**Note**: If `named-nzd2nzf` is not installed or accessible, the API will fall back
+to listing only static zones from configuration files.
+
 ### Zone Dynamic Updates
 
 By default, zones created via the API are configured for dynamic DNS updates using the TSIG key `ddns-key`:

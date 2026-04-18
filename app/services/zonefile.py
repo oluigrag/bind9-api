@@ -31,6 +31,8 @@ class ZoneFileService:
         self.config_path = Path(settings.bind9_config_path)
         self.checkzone_path = settings.bind9_named_checkzone
         self.checkconf_path = settings.bind9_named_checkconf
+        self.nzd2nzf_path = settings.bind9_named_nzd2nzf
+        self.cache_dir = settings.bind9_cache_dir
     
     # =========================================================================
     # Zone File Reading
@@ -483,35 +485,85 @@ class ZoneFileService:
     # =========================================================================
     
     async def list_configured_zones(self) -> List[Dict[str, Any]]:
-        """List zones from named.conf"""
+        """List zones from named.conf and BIND runtime (NZD)"""
         zones = []
         
-        if not self.config_path.exists():
-            return zones
+        # Get zones from config files
+        if self.config_path.exists():
+            content = self.config_path.read_text()
+            
+            # Parse zone definitions
+            zone_pattern = r'zone\s+"([^"]+)"\s*(?:IN\s+)?{([^}]+)}'
+            
+            for match in re.finditer(zone_pattern, content, re.MULTILINE | re.DOTALL):
+                zone_name = match.group(1)
+                zone_config = match.group(2)
+                
+                zone_info = {"name": zone_name}
+                
+                # Extract type
+                type_match = re.search(r'type\s+(\w+)', zone_config)
+                if type_match:
+                    zone_info["type"] = type_match.group(1)
+                
+                # Extract file
+                file_match = re.search(r'file\s+"([^"]+)"', zone_config)
+                if file_match:
+                    zone_info["file"] = file_match.group(1)
+                
+                zones.append(zone_info)
         
-        content = self.config_path.read_text()
+        # Get zones from BIND runtime (NZD database)
+        runtime_zones = self._list_runtime_zones()
         
-        # Parse zone definitions
-        # This is a simplified parser - real implementation would need to handle includes
-        zone_pattern = r'zone\s+"([^"]+)"\s*(?:IN\s+)?{([^}]+)}'
+        # Combine, avoiding duplicates (runtime zones take precedence)
+        zone_names = {z["name"] for z in zones}
+        for runtime_zone in runtime_zones:
+            if runtime_zone["name"] not in zone_names:
+                zones.append(runtime_zone)
         
-        for match in re.finditer(zone_pattern, content, re.MULTILINE | re.DOTALL):
-            zone_name = match.group(1)
-            zone_config = match.group(2)
+        return zones
+    
+    def _list_runtime_zones(self) -> List[Dict[str, Any]]:
+        """List zones from BIND runtime using named-nzd2nzf"""
+        zones = []
+        
+        try:
+            import subprocess
             
-            zone_info = {"name": zone_name}
+            # Convert NZD to NZF format
+            result = subprocess.run(
+                [self.nzd2nzf_path, str(Path(self.cache_dir) / "_default.nzd")],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
             
-            # Extract type
-            type_match = re.search(r'type\s+(\w+)', zone_config)
-            if type_match:
-                zone_info["type"] = type_match.group(1)
-            
-            # Extract file
-            file_match = re.search(r'file\s+"([^"]+)"', zone_config)
-            if file_match:
-                zone_info["file"] = file_match.group(1)
-            
-            zones.append(zone_info)
+            if result.returncode == 0 and result.stdout:
+                # Parse the NZF output for zone definitions
+                zone_pattern = r'zone\s+"([^"]+)"\s*(?:IN\s+)?{([^}]+)}'
+                
+                for match in re.finditer(zone_pattern, result.stdout, re.MULTILINE | re.DOTALL):
+                    zone_name = match.group(1)
+                    zone_config = match.group(2)
+                    
+                    zone_info = {"name": zone_name}
+                    
+                    # Extract type
+                    type_match = re.search(r'type\s+(\w+)', zone_config)
+                    if type_match:
+                        zone_info["type"] = type_match.group(1)
+                    
+                    # Extract file
+                    file_match = re.search(r'file\s+"([^"]+)"', zone_config)
+                    if file_match:
+                        zone_info["file"] = file_match.group(1)
+                    
+                    zones.append(zone_info)
+        
+        except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+            # named-nzd2nzf not available or error - return empty list
+            pass
         
         return zones
     
